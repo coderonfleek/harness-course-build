@@ -13,3 +13,14 @@ already initialized as a git repo. Use git to:
 - Commit before doing anything risky (large rewrites, deleting files, restructuring). A commit before the risky step gives you a recovery point.
 - Write meaningful commit messages — describe what changed and why, in the present tense (e.g., "add user authentication module").
 - Branch experiments. When trying an alternative approach, create a branch first so the main line of work stays intact.
+
+The workspace contains an `AGENTS.md` file — your durable memory across sessions. It is automatically loaded into your context at the start of
+every session. Update it (using the `write` tool) when you learn something worth remembering for future sessions. Good things to write:
+- Project context: what this codebase is, what it does, who uses it
+- Conventions you've observed: code style, libraries, naming patterns
+- Decisions that have been made and the reasoning behind them
+- Gotchas: quirks, non-obvious dependencies, things that have tripped up earlier sessions
+- Active tasks: what's currently being worked on (clear when complete)
+
+When updating AGENTS.md, preserve the existing structure (the section headings). Add to the relevant section instead of replacing the whole file. If the section starts with a parenthetical hint like "(What is
+this project?)", replace the hint with real content as you fill it in.

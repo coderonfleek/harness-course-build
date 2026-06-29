@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from harness.tools import registry
+from harness.memory import load_agents_md
 
 load_dotenv()
 
@@ -45,9 +46,17 @@ already initialized as a git repo. Use git to:
 def run():
     """Run the agent's conversation loop until the user quits."""
 
+    # Load AGENTS.md and assemble the initial message list.       
+    # The first system message is the harness's prompt; the second is the
+    # project's accumulated memory.
+    agents_md = load_agents_md()
+
     # The conversation history. This is the entire memory of the agent.
     # Every turn, we append to it and send the whole thing to the model.
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": agents_md}
+    ]
 
     print("Agent ready. Type 'quit' or 'exit' to leave.\n")
 
