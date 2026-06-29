@@ -21,12 +21,22 @@ else:
     client = OpenAI()  # Reads OPENAI_API_KEY from environment, default base URL.
     EXTRA_BODY = {}
 
+SYSTEM_PROMPT = """
+You are a coding assistant running in a terminal, helping a developer with software engineering tasks.
+
+Be concise. Prefer short, direct answers over long ones. When the user asks for code, return the code with minimal explanation unless they ask for more.
+
+When returning code, use fenced code blocks and specify the language.
+
+You do not currently have access to any tools — you cannot read files, run commands, or modify anything on the user's system. If the user asks you to do something that would require a tool, say so plainly and suggest they describe the relevant content directly.
+"""
+
 def run():
     """Run the agent's conversation loop until the user quits."""
 
     # The conversation history. This is the entire memory of the agent.
     # Every turn, we append to it and send the whole thing to the model.
-    messages = []
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     print("Agent ready. Type 'quit' or 'exit' to leave.\n")
 
