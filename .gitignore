@@ -1,0 +1,17 @@
+# Secrets — never commit
+.env
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
