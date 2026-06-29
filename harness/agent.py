@@ -4,9 +4,22 @@ from openai import OpenAI
 
 load_dotenv()
 
-MODEL = "gpt-4o-mini"
-
-client = OpenAI()
+# Decide which backend to use based on which key is set in .env.
+# This is a configuration-time choice — change .env, not code.
+if os.getenv("KIMI_API_KEY"):
+    MODEL = "kimi-k2.6"
+    client = OpenAI(
+        api_key=os.getenv("KIMI_API_KEY"),
+        base_url=os.getenv("KIMI_BASE_URL"),
+    )
+    # K2.6 supports thinking and non-thinking modes. We disable thinking
+    # to keep response shape identical to OpenAI — no reasoning_content
+    # to handle, no preservation requirements in multi-turn dispatch.
+    EXTRA_BODY = {"thinking": {"type": "disabled"}}
+else:
+    MODEL = "gpt-4o-mini"
+    client = OpenAI()  # Reads OPENAI_API_KEY from environment, default base URL.
+    EXTRA_BODY = {}
 
 def run():
     """Run the agent's conversation loop until the user quits."""
@@ -41,6 +54,7 @@ def run():
         response = client.chat.completions.create(
             model=MODEL,
             messages=messages,
+            extra_body=EXTRA_BODY
         )
 
         # 5. Extract the assistant's reply
