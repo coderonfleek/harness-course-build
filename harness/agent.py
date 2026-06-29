@@ -33,6 +33,13 @@ When returning code, use fenced code blocks and specify the language.
 
 You have access to five filesystem tools — read, write, list, mkdir, delete — operating on a workspace directory. Use them whenever a task involves reading, modifying, or organizing files. Paths are relative to
 the workspace root. Prefer reading and writing real files over describing them in conversation.
+
+You also have six git tools — git_status, git_diff, git_log, git_commit, git_checkout, git_branch — for versioning your work. The workspace is
+already initialized as a git repo. Use git to:
+- Commit frequently. Small, focused commits are easier to roll back.
+- Commit before doing anything risky (large rewrites, deleting files, restructuring). A commit before the risky step gives you a recovery point.
+- Write meaningful commit messages — describe what changed and why, in the present tense (e.g., "add user authentication module").
+- Branch experiments. When trying an alternative approach, create a branch first so the main line of work stays intact.
 """
 
 def run():
@@ -102,7 +109,7 @@ def run():
 
         # By here, `message` is the model's final text response for this turn —
         # either from the first call (no tools needed) or the second (after dispatch).
-        assistant_text = message.content 
+        assistant_text = message.content or "(no text response — used tools only)"
         messages.append({"role": "assistant", "content": assistant_text})
 
         print(f"\nagent > {assistant_text}\n")
