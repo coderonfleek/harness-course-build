@@ -25,6 +25,26 @@ else:
     client = OpenAI()  # Reads OPENAI_API_KEY from environment, default base URL.
     EXTRA_BODY = {}
 
+# Maximum number of tool-call rounds per user turn. When hit, the harness
+# forces the model to summarize what it did and hand control back to the
+# user, instead of letting the loop run indefinitely.
+STEP_BUDGET = 25
+
+# The synthetic system message injected when the step budget is exceeded.
+# It tells the model why it's being asked to stop and what shape its
+# response should take.
+BUDGET_HIT_MESSAGE = """\
+You've reached the step budget for this turn (25 tool calls). Do not make
+any more tool calls. Instead, respond directly to the user with:
+
+1. What you accomplished in this turn.
+2. What remains to be done.
+3. What the user should ask next to continue the work.
+
+Your response will be the final message for this turn. The user will
+reply to it and you can continue from there.
+"""
+
 SYSTEM_PROMPT = """
 You are a coding assistant running in a terminal, helping a developer with software engineering tasks.
 
@@ -104,29 +124,34 @@ def run():
             continue
 
         # 3. Append the user's message to the history
-        messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        messages.append({"role": "user", "content": user_input})
 
-        # 4. Call the model with the full conversation so far and the available tools
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            extra_body=EXTRA_BODY,
-            tools= registry.get_schemas()
-        )
+        # Full ReAct dispatch loop — replaces the single-round dispatch   
+        step_count = 0
+        while True:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                tools=registry.get_schemas(),
+            )
+            message = response.choices[0].message
 
-        message = response.choices[0].message                              
-        # If the model asked for a tool call, handle it before producing    
-        # the user-facing reply. Minimum-viable dispatch: one round only.
-        if message.tool_calls:
-            # Step 1: record the model's tool-call message in history so the
-            # upcoming tool-result messages have something to reference.
+            if not message.tool_calls:
+                break
+
+            if step_count >= STEP_BUDGET:
+                messages.append({"role": "system", "content": BUDGET_HIT_MESSAGE})
+                response = client.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    tools=registry.get_schemas(),
+                    tool_choice="none",
+                )
+                message = response.choices[0].message
+                break
+
             messages.append(message)
 
-            # Step 2: run each requested tool and append its result to history,
-            # using the matching tool_call_id so the model can pair them up.
             for call in message.tool_calls:
                 arguments = json.loads(call.function.arguments)
                 result = registry.dispatch(call.function.name, arguments)
@@ -136,18 +161,22 @@ def run():
                     "content": result,
                 })
 
-            # Step 3: re-call the model now that the tool results are in
-            # context. This second call produces the model's final text reply.
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                tools=registry.get_schemas(),
-            )
-            message = response.choices[0].message
+            step_count += 1
 
-        # By here, `message` is the model's final text response for this turn —
-        # either from the first call (no tools needed) or the second (after dispatch).
-        assistant_text = message.content or "(no text response — used tools only)"
+        # After the loop: `message.content` should have real text. If it
+        # doesn't, something unexpected happened (rare API edge case or a
+        # bug in the loop termination logic). Raise loudly rather than
+        # silently substituting a placeholder — silent fallbacks hide real
+        # problems and were exactly the 3.3 None-content workaround we're
+        # now removing.
+        if not message.content:
+            raise RuntimeError(
+                "Loop terminated but message.content is empty. "
+                "This shouldn't happen — check the API response and the "
+                "termination logic."
+            )
+        
+        assistant_text = message.content
         messages.append({"role": "assistant", "content": assistant_text})
 
         print(f"\nagent > {assistant_text}\n")
