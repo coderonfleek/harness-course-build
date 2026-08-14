@@ -1,0 +1,25 @@
+- Design Decisions 
+    - **Subprocess will run the bash string command directly**
+        - Unlike the `git` tool where we used an argument-list form: subprocess.run(["git", *args])
+        - The bash tool will set `shell=True` : `subprocess.run(command, shell=True)`
+        - This will allow all bash features including composability with pipes, redirects, command chaining, etc., to work natively
+        - Don’t panic, we will be dealing with the security issues this poses in a later lesson
+    - **Working directory is pinned to the workspace**
+        - Same operation scoping with did in the Filesystem chapter
+        - The model can execute any `bash` command it wants but all operations can only happen within the workspace
+    - **Timeout will be set to 60 seconds**
+        - Individual bash commands get a 60-second timeout.
+        - Longer than `git`'s 10s because bash covers real-world work: `pip install` a small package, `curl` a URL, `git clone` a small repo, run a script that does real computation.
+        - All of these can legitimately take 30+ seconds. 60 seconds gives room for these while still catching genuinely hung processes.
+    - **Output Combination - `stdout` + `stderr`**
+        - Git preferred stdout and fell back to stderr
+        - For bash, we combine them differently: **s**tdout gets returned as the primary output, and stderr gets appended **when non-empty**.
+        - This is because bash commands frequently produce useful output on *both* streams: *“a program might print progress to stdout and warnings to stderr, or fail with the error on stderr while still having emitted useful stdout beforehand”*
+        - 
+    - **Exit code surfacing**
+        - Same pattern as git: if the command returns non-zero, prefix the output with `[bash exit N]`.
+        - This is the model's clearest signal that something failed.
+        - Without it, a model reading only stdout might see success-looking output and miss that the command actually exited with an error.
+    - **Tool name**
+        - The tool name will be `bash` , matching the actual system program
+        - Matches how the model already thinks about shell commands — "run this in bash" is a natural phrase.
