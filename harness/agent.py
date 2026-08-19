@@ -7,6 +7,8 @@ from openai import OpenAI
 from harness.tools import registry
 from harness.memory import load_agents_md
 from harness.config import MODEL, STEP_BUDGET
+from harness.sandbox import Sandbox
+from harness.tools.bash import set_sandbox
 
 load_dotenv()
 
@@ -49,91 +51,107 @@ SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "system.txt").read_text()
 def run():
     """Run the agent's conversation loop until the user quits."""
 
-    # Load AGENTS.md and assemble the initial message list.       
-    # The first system message is the harness's prompt; the second is the
-    # project's accumulated memory.
-    agents_md = load_agents_md()
+    # Step 1: start the sandbox and wire it into the bash tool.            
+    # This creates the Docker container, bind-mounts the workspace, and
+    # cleans up any orphan containers from prior crashed sessions.
+    sandbox = Sandbox()
+    sandbox.start()
+    set_sandbox(sandbox)
 
-    # The conversation history. This is the entire memory of the agent.
-    # Every turn, we append to it and send the whole thing to the model.
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": agents_md}
-    ]
+    try:
+        # Load AGENTS.md and assemble the initial message list.       
+        # The first system message is the harness's prompt; the second is the
+        # project's accumulated memory.
+        agents_md = load_agents_md()
 
-    print("Agent ready. Type 'quit' or 'exit' to leave.\n")
+        # The conversation history. This is the entire memory of the agent.
+        # Every turn, we append to it and send the whole thing to the model.
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": agents_md}
+        ]
 
-    while True:
+        print("Agent ready. Type 'quit' or 'exit' to leave.\n")
 
-        # 1. Get input from the user
-        user_input = input("you > ").strip()
-
-        # 2. Allow the user to leave cleanly
-        if user_input in {"quit", "exit"}:
-            print("Goodbye.")
-            break
-
-        # Skip empty lines without making a model call
-        if not user_input:
-            continue
-
-        # 3. Append the user's message to the history
-        messages.append({"role": "user", "content": user_input})
-
-        # Full ReAct dispatch loop — replaces the single-round dispatch   
-        step_count = 0
         while True:
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                tools=registry.get_schemas(),
-            )
-            message = response.choices[0].message
 
-            if not message.tool_calls:
+            # 1. Get input from the user
+            user_input = input("you > ").strip()
+
+            # 2. Allow the user to leave cleanly
+            if user_input in {"quit", "exit"}:
+                print("Goodbye.")
                 break
 
-            if step_count >= STEP_BUDGET:
-                messages.append({"role": "system", "content": BUDGET_HIT_MESSAGE})
+            # Skip empty lines without making a model call
+            if not user_input:
+                continue
+
+            # 3. Append the user's message to the history
+            messages.append({"role": "user", "content": user_input})
+
+            # Full ReAct dispatch loop — replaces the single-round dispatch   
+            step_count = 0
+            while True:
                 response = client.chat.completions.create(
                     model=MODEL,
                     messages=messages,
                     tools=registry.get_schemas(),
-                    tool_choice="none",
                 )
                 message = response.choices[0].message
-                break
 
-            messages.append(message)
+                if not message.tool_calls:
+                    break
 
-            for call in message.tool_calls:
-                arguments = json.loads(call.function.arguments)
-                result = registry.dispatch(call.function.name, arguments)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": call.id,
-                    "content": result,
-                })
+                if step_count >= STEP_BUDGET:
+                    messages.append({"role": "system", "content": BUDGET_HIT_MESSAGE})
+                    response = client.chat.completions.create(
+                        model=MODEL,
+                        messages=messages,
+                        tools=registry.get_schemas(),
+                        tool_choice="none",
+                    )
+                    message = response.choices[0].message
+                    break
 
-            step_count += 1
+                messages.append(message)
 
-        # After the loop: `message.content` should have real text. If it
-        # doesn't, something unexpected happened (rare API edge case or a
-        # bug in the loop termination logic). Raise loudly rather than
-        # silently substituting a placeholder — silent fallbacks hide real
-        # problems and were exactly the 3.3 None-content workaround we're
-        # now removing.
-        if not message.content:
-            raise RuntimeError(
-                "Loop terminated but message.content is empty. "
-                "This shouldn't happen — check the API response and the "
-                "termination logic."
-            )
-        
-        assistant_text = message.content
-        messages.append({"role": "assistant", "content": assistant_text})
+                for call in message.tool_calls:
+                    arguments = json.loads(call.function.arguments)
+                    result = registry.dispatch(call.function.name, arguments)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": call.id,
+                        "content": result,
+                    })
 
-        print(f"\nagent > {assistant_text}\n")
+                step_count += 1
+
+            # After the loop: `message.content` should have real text. If it
+            # doesn't, something unexpected happened (rare API edge case or a
+            # bug in the loop termination logic). Raise loudly rather than
+            # silently substituting a placeholder — silent fallbacks hide real
+            # problems and were exactly the 3.3 None-content workaround we're
+            # now removing.
+            if not message.content:
+                raise RuntimeError(
+                    "Loop terminated but message.content is empty. "
+                    "This shouldn't happen — check the API response and the "
+                    "termination logic."
+                )
+            
+            assistant_text = message.content
+            messages.append({"role": "assistant", "content": assistant_text})
+
+            print(f"\nagent > {assistant_text}\n")
+    finally:
+        # Step 2: tear down the sandbox no matter how run() exits.
+        # This runs on normal exit, on exception, on user Ctrl-C — but
+        # NOT on hard crashes (SIGKILL, power loss). The orphan cleanup
+        # in Sandbox.start() handles those on the next session start.
+        print("Stopping sandbox...")
+        sandbox.stop()
+        print("Sandbox stopped.")
 
 
 if __name__ == "__main__":

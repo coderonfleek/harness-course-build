@@ -5,6 +5,18 @@ import subprocess
 from harness.tools.filesystem import WORKSPACE
 from harness.tools.registry import tool
 from harness.config import BASH_TIMEOUT, ALLOW_LIST, DENY_LIST
+from harness.sandbox import Sandbox
+
+# Module-level sandbox reference. Set once at startup by agent.py via
+# set_sandbox(). The bash tool reads this at call time. This is the
+# smallest step above hardcoding — the caller (agent.py) constructs the
+# dependency; the module that needs it accepts one at setup time.
+_sandbox: Sandbox | None = None
+
+def set_sandbox(sb: Sandbox) -> None:
+    """Called by agent.py at startup to wire the sandbox into this module."""
+    global _sandbox
+    _sandbox = sb
 
 # Characters that separate chained commands in bash. We check the first
 # token of every segment, so `pip install foo && rm -rf /` gets both
@@ -106,39 +118,29 @@ def bash(command: str) -> str:
     is returned instead of executing it.
     """
 
-    # Policy check before touching subprocess. Fast rejection — 
-    # no shell invoked, no side effects, just the error string returned
-    # to the model so it can construct a different command.
+    # Step 1: policy check before touching the sandbox. Fast rejection —
+    # no container work, no side effects.
     policy_error = _check_policy(command)
     if policy_error:
         return policy_error
 
-    try:
-        # Step 1: run the command with the workspace as the working directory.
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=WORKSPACE,
-            capture_output=True,
-            text=True,
-            timeout=BASH_TIMEOUT,
-            check=False,  # non-zero exits are surfaced as text, not raised
-        )
-    except subprocess.TimeoutExpired:
-        # Step 2a: on timeout, tell the model explicitly what happened and
-        # what its next move should be.
+    # Step 2: fail loudly if the sandbox wasn't wired up. This shouldn't
+    # happen in normal usage — agent.py calls set_sandbox at startup —
+    # but if it does, the error message says what went wrong.
+    if _sandbox is None:
         return (
-            f"[bash timeout after {BASH_TIMEOUT}s] Command was killed. "
-            f"If this was expected to take longer, consider running it "
-            f"in pieces or breaking the work up."
+            "[bash error] Sandbox not initialized. This is a harness bug; "
+            "agent.py should have called set_sandbox() at startup."
         )
 
-    # Step 2b: assemble the output the model will see.
-    output = _combine_output(result.stdout, result.stderr) or "(no output)"
+    # Step 3: ask the sandbox to execute. It returns (exit_code, stdout, stderr).
+    exit_code, stdout, stderr = _sandbox.execute(command)
 
-    # Step 3: prepend a failure marker on non-zero exit, so the model
-    # can see success/failure at a glance without parsing exit codes.
-    if result.returncode != 0:
-        return f"[bash exit {result.returncode}] {output}"
+    # Step 4: combine output. Same _combine_output helper as before.
+    output = _combine_output(stdout, stderr) or "(no output)"
+
+    # Step 5: surface non-zero exit code with the [bash exit N] prefix.
+    if exit_code != 0:
+        return f"[bash exit {exit_code}] {output}"
 
     return output
