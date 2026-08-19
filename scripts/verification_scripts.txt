@@ -1,0 +1,8 @@
+# Harness Config Lesson:
+
+- Verify config
+python -c "from harness import config; print(config.MODEL, config.STEP_BUDGET, config.BASH_TIMEOUT)"
+
+- Verify system prompt
+
+python -c "from pathlib import Path; p = Path('harness/prompts/system.txt'); print(p.exists(), len(p.read_text()))"
