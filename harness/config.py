@@ -38,8 +38,11 @@ ALLOW_LIST: set[str] = set()
 DENY_LIST: set[str] = set()
 
 # -- Sandbox configuration --                                             
-# The Docker image used for the containerized bash tool. 
-SANDBOX_IMAGE: str = "python:3.11-slim"
+# The Docker image used for the containerized bash tool.          
+# Custom image built from harness/sandbox/Dockerfile — Debian base with
+# Python, Node 20, git, curl, jq, ripgrep, and other common CLIs.
+# Rebuild with: docker build -f harness/sandbox/Dockerfile -t agent-harness:0.1 . 
+SANDBOX_IMAGE: str = "agent-harness:0.1"
 
 # Where the workspace is mounted inside the container. All bash commands
 # see this path as their working directory. Bind-mounted from the host's
