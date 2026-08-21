@@ -31,11 +31,25 @@ GIT_TIMEOUT: int = 10
 # -- Bash command policy --
 # Allow-list of permitted commands (matched against the first token of
 # each chain segment). Empty = permissive.
-ALLOW_LIST: set[str] = set()
+ALLOW_LIST: set[str] = {
+    # Language interpreters and package managers
+    "python", "python3", "pip", "pip3",
+    # Basic file inspection
+    "ls", "cat", "wc", "grep", "find", "head", "tail",
+    # Network tools (the agent may want to probe the URL first)
+    "curl",
+    # System info
+    "which", "echo", "pwd",
+    # Git — though the agent should prefer the git_* tools first
+    "git",
+}
 
 # Deny-list of forbidden commands. Empty = no denials.
 # Precedence: deny wins on conflict. See Lesson 4.5.
-DENY_LIST: set[str] = set()
+DENY_LIST: set[str] = {
+    # Destructive commands with no place in a scraping task
+    "rm", "sudo", "dd", "mkfs", "mv",
+}
 
 # -- Sandbox configuration --                                             
 # The Docker image used for the containerized bash tool.          
