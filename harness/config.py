@@ -78,3 +78,30 @@ SANDBOX_CONTAINER_PREFIX: str = "agent-harness-"
 # Five is a middle ground — enough context to be useful, not so many
 # that the response bloats.
 WEB_SEARCH_MAX_RESULTS: int = 5
+
+# -- RAG memory --    
+# Path to the knowledge corpus (documents to be indexed and retrieved
+# from). Lives at project root, not in workspace, so it survives
+# workspace clean-slates.
+RAG_CORPUS_PATH: str = "knowledge"
+
+# Path to ChromaDB's persistent storage. Also at project root; gitignored
+# because it's derived from the corpus and regenerable in seconds.
+RAG_INDEX_PATH: str = ".rag_index"
+
+# OpenAI's embedding model. text-embedding-3-small is cheap
+# (~$0.02 per 1M tokens) and good enough for most retrieval tasks.
+RAG_EMBEDDING_MODEL: str = "text-embedding-3-small"
+
+# Target chunk size in tokens (approximate). Balances retrieval precision
+# (smaller = more precise hits) against context per hit (larger = more
+# useful passages).
+RAG_CHUNK_SIZE: int = 500
+
+# Overlap between adjacent chunks, in tokens. Smooths the case where
+# relevant content straddles a chunk boundary.
+RAG_CHUNK_OVERLAP: int = 50
+
+# Default number of results the recall tool returns. The model can
+# override this via max_results.
+RAG_DEFAULT_RESULTS: int = 5

@@ -18,3 +18,4 @@ env/
 
 # Others
 workspace/
+.rag_index
