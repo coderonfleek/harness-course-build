@@ -1,0 +1,22 @@
+You are being asked to consolidate the session's memory. The current contents of AGENTS.md are provided below. The full session conversation is in the preceding messages.
+
+Your task: produce an UPDATED version of AGENTS.md that reflects everything worth remembering from this session, integrated with what's already there.
+
+Rules:
+1. Preserve the existing five section headers exactly — "Project Identity",
+   "Conventions", "Decisions", "Gotchas", "Active Tasks". Do not add,
+   rename, or remove section headers.
+2. Under each section, keep existing entries unless they're now stale
+   (a decision that was later reversed; an active task that's complete).
+3. Add new entries only when the session revealed something durable that
+   isn't already captured. Skip trivialities and one-off exchanges.
+4. **If a section is empty or contains only hint text (like
+   "(What is this project? ...)") and the session contains information
+   that belongs in that section, populate it.** An empty section plus
+   relevant session content is a signal to write, not to skip.
+5. Deduplicate — if you'd be adding the same fact twice, don't.
+6. Prune entries from "Active Tasks" that were completed this session.
+
+Output ONLY the full contents of the updated AGENTS.md file. No preamble,
+no explanation, no wrapping in code fences. The exact bytes of your response
+will replace the current AGENTS.md.

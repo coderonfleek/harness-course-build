@@ -5,10 +5,15 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from harness.tools import registry
-from harness.memory import load_agents_md
 from harness.config import MODEL, STEP_BUDGET
 from harness.sandbox import Sandbox
 from harness.tools.bash import set_sandbox
+
+from harness.memory import ( 
+    load_agents_md,
+    save_agents_md,
+    validate_agents_md_structure,
+)
 
 load_dotenv()
 
@@ -48,6 +53,72 @@ reply to it and you can continue from there.
 
 SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "system.txt").read_text()
 
+# Consolidation prompt loaded from file, like the system prompt.   
+SESSION_END_MEMORY_PROMPT = (
+    Path(__file__).parent / "prompts" / "session_end_memory.txt"
+).read_text()
+
+
+def _consolidate_memory(messages: list, client) -> None:
+    """Run the end-of-session memory consolidation step.
+
+    Sends the current AGENTS.md + full session history + a consolidation
+    prompt to the model. Expects a full AGENTS.md rewrite back. Validates
+    the structure before writing. On failure, logs and keeps the old file.
+    """
+    print("Consolidating memory...")
+
+    try:
+        # Step 1: gather the inputs — current AGENTS.md and the full history.
+        current_agents_md = load_agents_md()
+
+        # Step 2: build the consolidation payload. We reuse the session's
+        # message history but append a fresh system message with the
+        # consolidation prompt + the current AGENTS.md. The model sees
+        # everything it needs to produce the rewrite.
+        consolidation_context = (
+            f"{SESSION_END_MEMORY_PROMPT}\n\n"
+            f"=== Current AGENTS.md ===\n{current_agents_md}\n"
+        )
+        consolidation_messages = messages + [
+            {"role": "system", "content": consolidation_context},
+        ]
+
+        # Step 3: one model call, no tools. tool_choice="none" forces text
+        # output — we want the file content, not tool invocations.
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=consolidation_messages,
+        )
+        proposed = response.choices[0].message.content
+
+        if not proposed:
+            print("Memory consolidation returned empty content. Keeping current AGENTS.md.")
+            return
+
+        # Step 4: validate structure. Reject a malformed return without
+        # touching the file.
+        if not validate_agents_md_structure(proposed):
+            print(
+                "Memory consolidation returned malformed structure "
+                "(missing section headers). Keeping current AGENTS.md."
+            )
+            return
+
+        # Step 5: atomic write. The old file is replaced by the new one
+        # in a single filesystem operation.
+        save_agents_md(proposed)
+        print("Memory updated.")
+
+    except Exception as e:
+        # If anything goes wrong during consolidation — API error, timeout,
+        # unexpected exception — we log and return. The old AGENTS.md stays
+        # intact. Consolidation is a nice-to-have; sandbox teardown is
+        # non-negotiable.
+        print(f"Memory consolidation failed: {e}. Keeping current AGENTS.md.")
+
+
+
 def run():
     """Run the agent's conversation loop until the user quits."""
 
@@ -80,6 +151,7 @@ def run():
 
             # 2. Allow the user to leave cleanly
             if user_input in {"quit", "exit"}:
+                _consolidate_memory(messages, client)
                 print("Goodbye.")
                 break
 
