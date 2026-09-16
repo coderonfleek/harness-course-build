@@ -5,6 +5,8 @@ from typing import Any, Callable
 from pydantic import TypeAdapter
 import inspect
 
+from harness.context.offloader import maybe_offload
+
 
 @dataclass
 class Tool:
@@ -79,7 +81,8 @@ class ToolRegistry:
         # The model sees the error string and decides what to do next.
         try:
             result = self._tools[name].function(**arguments)
-            return str(result)
+            result_str = str(result)
+            return maybe_offload(name, result_str) 
         except Exception as e:
             return f"error: {type(e).__name__}: {e}"
 

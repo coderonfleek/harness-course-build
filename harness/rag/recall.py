@@ -58,12 +58,16 @@ def recall(query: str, max_results: int = None) -> str:
       than a specific file lookup
 
     Do NOT use recall for:
-    - Session memory (that's AGENTS.md, already in your context)
-    - Public knowledge the model reliably knows (general programming,
-      well-known frameworks)
-    - Current-events lookups (that's web_search)
-    - Structured API references (that's better served by a purpose-built
-      tool if one exists)
+    - Session memory: that's AGENTS.md, already in your context
+    - Public knowledge you reliably know from training
+    - Current-events lookups: use web_search instead
+    - Direct file reads: if you know the exact file, use read()
+    - Content from previous tool calls in this session: previous 
+      web_search results, previous read outputs, previous bash outputs.
+      Those live either in your context (head/tail) or in offloaded files
+      inside the workspace at .tool_outputs/, referenced by [TRUNCATED...]
+      markers. Use read() on the marker's path; recall() only searches
+      the project knowledge corpus.
 
     Args:
         query: A specific, focused query. Natural phrasing works best.

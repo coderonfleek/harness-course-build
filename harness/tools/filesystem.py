@@ -2,14 +2,7 @@
 
 from pathlib import Path
 from harness.tools.registry import tool
-
-
-# The workspace directory. All filesystem tools operate inside this.
-# We resolve it once at import to a canonical absolute path.
-WORKSPACE = Path("./workspace").resolve()
-
-# Create the workspace directory if it doesn't exist. Idempotent.
-WORKSPACE.mkdir(exist_ok=True)
+from harness.config import WORKSPACE
 
 
 def _resolve_path(path: str) -> Path:
