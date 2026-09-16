@@ -181,3 +181,47 @@ PLAN_REMINDER_INTERVAL: int = 2
 # file into plan.md, session start would otherwise inject the whole
 # thing). At 4 chars/token, ~5000 chars ≈ 1250 tokens.
 PLAN_INJECTION_MAX_CHARS: int = 5000
+
+# -- Ralph loop --  
+# Maximum number of times Ralph will force continuation within a single
+# user turn. When hit, Ralph prints a warning and returns control to
+# the user instead of forcing again.
+#
+# Same shape as STEP_BUDGET for the ReAct loop — a hard cap that
+# prevents runaway loops when the agent genuinely can't complete
+# some task. Tune down if forced continuations are wasting spend;
+# tune up if you're doing genuinely long multi-step work and hitting
+# the cap prematurely.
+RALPH_MAX_CONTINUATIONS: int = 10
+
+# The synthetic user message injected when Ralph forces continuation.
+# Chosen to be minimal — the agent already sees the plan via
+# session-start injection, so "continue" is enough to kick off the
+# next ReAct loop iteration.
+RALPH_CONTINUATION_PROMPT: str = "continue"
+
+# Model used for Ralph's semantic evaluation. Same as MODEL by default;
+# separated in case you want to use a cheaper/faster model for
+# evaluation (the semantic check is a short, structured call — a
+# smaller model often works fine here).
+RALPH_EVAL_MODEL: str = MODEL
+
+# Prompt for the semantic evaluator. Structured output (DONE / NOT_DONE
+# prefix) makes Ralph's parsing trivial.
+RALPH_EVAL_PROMPT: str = """You are evaluating whether an agent has completed a user's task.
+
+Original user goal:
+{goal}
+
+Current plan state (from plan.md):
+{plan}
+
+Recent conversation summary:
+{recent_summary}
+
+Has the goal been met? Answer with exactly one of:
+- "DONE: <one-sentence reason>" if the goal is fully satisfied
+- "NOT_DONE: <one-sentence reason>" if meaningful work remains
+
+Be strict — if the agent's work is partial, incomplete, unverified, or if
+there are open plan items that haven't been addressed, answer NOT_DONE."""
