@@ -1,0 +1,1 @@
+I need three technical evaluations, one each for: (1) whether we should adopt Kubernetes, (2) whether we should adopt GraphQL, (3) whether we should adopt event sourcing. These are three independent evaluations — no shared context between them. Draw up a plan first — one task per evaluation — so I can review. Don't start executing yet.

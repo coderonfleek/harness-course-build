@@ -14,3 +14,5 @@ from harness.tools import web_search    # noqa: F401 — imported for side effec
 from harness.rag import recall    # noqa: F401 — imported for side effects
 
 from harness.planning import update_plan
+
+from harness.subagents import spawn_subagent

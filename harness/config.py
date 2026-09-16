@@ -225,3 +225,32 @@ Has the goal been met? Answer with exactly one of:
 
 Be strict — if the agent's work is partial, incomplete, unverified, or if
 there are open plan items that haven't been addressed, answer NOT_DONE."""
+
+# -- Subagent spawning --    
+# Step budget for subagents. Deliberately smaller than the parent's
+# STEP_BUDGET (25) — subagents doing one focused task shouldn't need
+# many rounds. If a subagent hits this cap, its task was likely too
+# large and should have been broken into smaller subtasks by the
+# parent's decomposition.
+SUBAGENT_STEP_BUDGET: int = 15
+
+# Default set of tool names exposed to subagents. Excludes:
+#   - spawn_subagent (no recursive spawning)
+#   - update_plan (parent owns the plan)
+#   - remember (parent owns memory)
+#
+# Individual spawn_subagent() calls can override this via the `tools`
+# parameter for tasks that need a narrower set.
+SUBAGENT_DEFAULT_TOOLS: list[str] = [
+    "read", "write", "list", "mkdir", "delete",
+    "git_status", "git_diff", "git_add", "git_commit", "git_log", "git_checkout",
+    "bash",
+    "web_search",
+    "recall",
+]
+
+# Directory where per-subagent execution logs are written. Each
+# subagent gets its own JSONL file containing the full messages
+# list — for post-hoc inspection when a subagent's summary needs
+# to be debugged.
+SUBAGENT_LOG_DIR: Path = Path(".harness/subagents").resolve()
