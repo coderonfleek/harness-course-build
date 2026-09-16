@@ -16,5 +16,4 @@
 
 9. What do our security docs say about secrets management?
 
-10. What are the current recommendations for structured logging in
-      Python?
+10. What are the current recommendations for structured logging in Python?
