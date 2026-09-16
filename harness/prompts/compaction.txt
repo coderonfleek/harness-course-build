@@ -1,0 +1,30 @@
+You are being asked to compact a conversation's history. Below is the
+older portion of an ongoing session between a user and an autonomous
+coding agent. The most recent turns are NOT included here — they will
+be preserved verbatim after compaction.
+
+Produce a concise summary that captures what the agent needs to know
+to continue the session coherently. Include:
+
+1. What tasks were undertaken and their outcomes (completed, in-progress,
+   failed with reason).
+2. Key decisions made and the reasoning briefly.
+3. Files created, modified, or deleted, with their paths.
+4. Any environment state the agent should remember (e.g., "installed
+   pandas in the sandbox", "created a virtual env at ./venv").
+5. Unresolved issues or open questions the agent may need to return to.
+
+Skip:
+- Verbatim tool inputs and outputs (unless a specific value matters
+  and would be forgotten)
+- Small talk or one-off exchanges
+- Content that only mattered momentarily (a directory listing the
+  agent used once and moved on)
+
+Format the summary as terse prose, not as a bulleted list. Aim for
+under 500 tokens. This summary will be injected into the model's
+context as a system message titled "Compacted Summary" — write it as
+notes-to-self from an earlier version of the agent.
+
+Output ONLY the summary text. No preamble, no explanation, no wrapping
+in code fences.

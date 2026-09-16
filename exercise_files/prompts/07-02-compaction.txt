@@ -1,0 +1,20 @@
+1. What does our conventions.md say about Python style, and what's
+      our test framework of choice?
+
+2. Look up the current state of the FastAPI framework — is it actively maintained, and what are its main selling points?
+
+3. Same question for Django — is it still recommended for new projects in 2025?
+
+4. Postgres vs MongoDB recommendations for a new project?
+
+5. What are the current options for container orchestration? Kubernetes vs ECS vs Docker Swarm?
+
+6. What does our knowledge base say about on-call and incident response?
+
+7. What are current best practices for CI/CD for Python services?
+8. What's the modern observability stack for microservices?
+
+9. What do our security docs say about secrets management?
+
+10. What are the current recommendations for structured logging in
+      Python?

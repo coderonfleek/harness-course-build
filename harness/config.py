@@ -105,3 +105,20 @@ RAG_CHUNK_OVERLAP: int = 50
 # Default number of results the recall tool returns. The model can
 # override this via max_results.
 RAG_DEFAULT_RESULTS: int = 5
+
+# -- Context management --        
+# Token threshold at which the harness compacts the message history.
+# Chosen to leave headroom below common context limits (128K) for the
+# summarization call itself plus the next turn.
+#
+# Production systems typically calculate this as a percentage of the
+# model's context window (e.g., 60% of ctx_window) so the same code
+# adapts across models with different limits. We use a fixed value here
+# for teaching — one number in config, easy to reason about and adjust.
+COMPACTION_THRESHOLD: int = 60_000
+
+# Number of recent user+assistant exchanges (including their tool
+# results) to preserve verbatim after compaction. Everything older
+# gets summarized. Small enough that summarization is meaningful,
+# large enough that in-flight work isn't lost.
+COMPACTION_KEEP_RECENT: int = 3
