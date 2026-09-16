@@ -19,4 +19,4 @@ env/
 # Others
 workspace/
 .rag_index
-./harness
+.harness
