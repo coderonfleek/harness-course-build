@@ -12,3 +12,5 @@ from harness.tools import bash # noqa: F401
 from harness.tools import web_search    # noqa: F401 — imported for side effects
 
 from harness.rag import recall    # noqa: F401 — imported for side effects
+
+from harness.planning import update_plan

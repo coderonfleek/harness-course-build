@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from harness.tools import registry
-from harness.config import MODEL, STEP_BUDGET, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT
+from harness.config import MODEL, STEP_BUDGET, COMPACTION_THRESHOLD, COMPACTION_KEEP_RECENT, PLAN_REMINDER_INTERVAL
 from harness.sandbox import Sandbox
 from harness.tools.bash import set_sandbox
 
@@ -16,6 +16,12 @@ from harness.memory import (
 )
 
 from harness.context import Compactor
+
+from harness.planning import (
+    load_plan_for_injection,
+    has_open_items,
+    build_reminder_message,
+)
 
 load_dotenv()
 
@@ -170,6 +176,25 @@ def run():
             {"role": "system", "content": agents_md}
         ]
 
+        # Session-start plan injection — same shape as AGENTS.md loading above.
+        # If workspace/plan.md exists, inject its contents as a system message
+        # so the agent sees the current plan on turn 1 without asking.
+        plan_content = load_plan_for_injection()
+        if plan_content is not None:
+            messages.append({
+                "role": "system",
+                "content": f"## Current plan (from workspace/plan.md)\n\n{plan_content}",
+            })
+
+            print(f"[Loaded plan.md into context: {len(plan_content):,} chars]")
+
+        # Track turns since the last planning reminder was fired. 
+        # Per-session state — must persist across all turns of the outer loop,
+        # not reset each iteration. Increments on each user turn; resets to 0
+        # when a reminder fires.
+
+        turns_since_reminder = 0
+
         print("Agent ready. Type 'quit' or 'exit' to leave. Type /compact to force compaction.\n")
 
         while True:
@@ -212,6 +237,16 @@ def run():
 
             # 3. Append the user's message to the history
             messages.append({"role": "user", "content": user_input})
+
+            # Fire the planning reminder if the interval has elapsed AND
+            # plan.md has open items. Prepended as a system message so it
+            # arrives ahead of the ReAct loop's first model call this turn.
+            turns_since_reminder += 1
+            if turns_since_reminder >= PLAN_REMINDER_INTERVAL and has_open_items():
+                messages.append({"role": "system", "content": build_reminder_message()})
+                
+                print(f"[Planning reminder injected — {turns_since_reminder} turns since last]")
+                turns_since_reminder = 0
 
             # Full ReAct dispatch loop — replaces the single-round dispatch   
             step_count = 0
