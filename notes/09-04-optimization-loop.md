@@ -1,4 +1,4 @@
----
+
 
 # The Optimization Loop
 
@@ -14,7 +14,7 @@ By the end of this lesson, you will:
 
 This lesson closes Chapter 9 and the course's build phase. From here, improving your harness is iterative, and this is the method you'll apply.
 
----
+
 
 ## 🧠 The Core Insight
 
