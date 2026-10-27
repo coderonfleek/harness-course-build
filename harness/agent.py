@@ -2,6 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith.wrappers import wrap_openai
 
 from pathlib import Path
 
@@ -159,7 +160,7 @@ reply to it and you can continue from there.
 """
 
 # One client, reused for every call
-client = OpenAI()
+client = wrap_openai(OpenAI())
 
 # <---- NEW HELPER
 def _build_initial_messages() -> list[dict]:                              

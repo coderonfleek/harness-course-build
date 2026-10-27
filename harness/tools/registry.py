@@ -6,6 +6,7 @@ from pydantic import TypeAdapter
 import inspect
 
 from harness.context.offloader import maybe_offload
+from langsmith import traceable
 
 
 @dataclass
@@ -67,6 +68,7 @@ class ToolRegistry:
             for t in self._tools.values()
         ]
 
+    @traceable(run_type="tool")
     def dispatch(self, name: str, arguments: dict[str, Any]) -> str:
         """Call the named tool with the given arguments. Returns its string output."""
         # Reject unknown tool names — return an error the model can read and recover from.

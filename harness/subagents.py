@@ -17,6 +17,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from langsmith.wrappers import wrap_openai
+from langsmith import traceable
 
 # Load .env before any module-level OpenAI() instantiation. This module
 # is imported by harness/tools/__init__.py before agent.py's own
@@ -95,7 +97,7 @@ def _get_subagent_tool_schemas(tool_names: list[str]) -> list[dict]:
     all_schemas = registry.get_schemas()
     return [s for s in all_schemas if s["function"]["name"] in tool_names]
 
-
+@traceable(run_type="chain", name="subagent_react_loop")
 def _run_subagent_react_loop(
     client: OpenAI,
     messages: list,
@@ -178,7 +180,7 @@ def _run_subagent_react_loop(
 # Client is instantiated fresh per spawn_subagent call. Sharing the
 # parent's client would work too, but instantiation is cheap and this
 # keeps the subagent's execution self-contained.
-_client = OpenAI()
+_client = wrap_openai(OpenAI())
 
 
 @tool
